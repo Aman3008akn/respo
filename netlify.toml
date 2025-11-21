@@ -1,0 +1,12 @@
+[build]
+  # Install deps for frontend and build it. Netlify runs this on their CI.
+  command = "npm ci --prefix frontend && npm run build --prefix frontend"
+  publish = "frontend/build"
+
+# You can set environment variables here, but it's better to set them in the
+# Netlify UI (Site settings > Build & deploy > Environment). Example:
+# [context.production.environment]
+#   REACT_APP_API_BASE_URL = "https://api.example.com/api"
+
+[context.production.environment]
+# Leave unset in the repo; set `REACT_APP_API_BASE_URL` in Netlify dashboard.
