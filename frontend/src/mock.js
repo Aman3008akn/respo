@@ -1,11 +1,10 @@
-// API Base URL for backend integration. In production, set `REACT_APP_API_BASE_URL`
-// in Netlify environment variables to point to your hosted backend (e.g. https://api.example.com/api)
-const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api'; // fallback to localhost for local dev
+// Mock data and game logic for the gaming platform
 
-// We will no longer use MOCK_USERS as users will be managed by the backend.
-export const MOCK_USERS = []; 
+export const MOCK_USERS = [
+  { id: '1', username: 'demo', email: 'demo@example.com', password: 'demo123', balance: 10000 }
+];
 
-// Store current user in localStorage (will store token/user info from backend)
+// Store current user in localStorage
 export const getCurrentUser = () => {
   const userStr = localStorage.getItem('currentUser');
   return userStr ? JSON.parse(userStr) : null;
@@ -15,120 +14,39 @@ export const setCurrentUser = (user) => {
   localStorage.setItem('currentUser', JSON.stringify(user));
 };
 
-// --- Backend API Integration Functions ---
-// These functions will replace the mock logic for auth and balance
-
-export const login = async (username, password) => {
-  try {
-    const response = await fetch(`${BASE_URL}/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Login failed');
-    }
-    const user = await response.json();
-    setCurrentUser(user);
-    return user;
-  } catch (error) {
-    console.error("Login error:", error);
-    throw error;
-  }
-};
-
-export const register = async (username, email, password) => {
-  try {
-    const response = await fetch(`${BASE_URL}/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, email, password }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Registration failed');
-    }
-    const user = await response.json();
-    setCurrentUser(user); // Log in user after registration
-    return user;
-  } catch (error) {
-    console.error("Registration error:", error);
-    throw error;
-  }
-};
-
 export const logout = () => {
   localStorage.removeItem('currentUser');
 };
 
-export const getUserBalance = async () => {
+export const getUserBalance = () => {
   const user = getCurrentUser();
-  if (!user) return 0;
-  try {
-    const response = await fetch(`${BASE_URL}/user/balance/${user.username}`);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to fetch balance');
-    }
-    const updatedUser = await response.json();
-    setCurrentUser(updatedUser); // Update local storage with latest balance
-    return updatedUser.balance;
-  } catch (error) {
-    console.error("Get user balance error:", error);
-    return user.balance; // Return old balance if API call fails
+  return user ? user.balance : 0;
+};
+
+export const updateUserBalance = (newBalance) => {
+  const user = getCurrentUser();
+  if (user) {
+    user.balance = newBalance;
+    setCurrentUser(user);
   }
 };
 
-export const depositBalance = async (amount) => {
+export const depositBalance = (amount) => {
   const user = getCurrentUser();
-  if (!user) throw new Error("No user logged in for deposit");
-  try {
-    const response = await fetch(`${BASE_URL}/user/deposit/${user.username}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ amount }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Deposit failed');
-    }
-    const updatedUser = await response.json();
-    setCurrentUser(updatedUser);
-    return updatedUser.balance;
-  } catch (error) {
-    console.error("Deposit error:", error);
-    throw error;
+  if (user) {
+    user.balance += amount;
+    setCurrentUser(user);
   }
 };
 
-export const withdrawBalance = async (amount) => {
+export const withdrawBalance = (amount) => {
   const user = getCurrentUser();
-  if (!user) throw new Error("No user logged in for withdrawal");
-  try {
-    const response = await fetch(`${BASE_URL}/user/withdraw/${user.username}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ amount }),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Withdrawal failed');
-    }
-    const updatedUser = await response.json();
-    setCurrentUser(updatedUser);
-    return updatedUser.balance;
-  } catch (error) {
-    console.error("Withdrawal error:", error);
-    throw error;
+  if (user && user.balance >= amount) {
+    user.balance -= amount;
+    setCurrentUser(user);
+  } else {
+    // Optionally handle insufficient balance here or in the calling component
+    console.error("Insufficient balance for withdrawal in mock.js");
   }
 };
 

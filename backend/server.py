@@ -6,10 +6,10 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List
 import uuid
 from datetime import datetime, timezone
-import bcrypt # For password hashing
+
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -36,31 +36,6 @@ class StatusCheck(BaseModel):
 
 class StatusCheckCreate(BaseModel):
     client_name: str
-
-# New Models for User Management
-class User(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    username: str
-    email: str
-    balance: float = 0.0
-
-class UserInDB(User):
-    hashed_password: str
-
-class UserCreate(BaseModel):
-    username: str
-    email: str
-    password: str
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class BalanceUpdate(BaseModel):
-    amount: float
-
-# Temporary in-memory "database" for users
-in_memory_users = {} # {username: UserInDB}
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
@@ -90,62 +65,6 @@ async def get_status_checks():
             check['timestamp'] = datetime.fromisoformat(check['timestamp'])
     
     return status_checks
-
-@api_router.post("/register", response_model=User)
-async def register_user(user_create: UserCreate):
-    if user_create.username in in_memory_users:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    if any(u.email == user_create.email for u in in_memory_users.values()):
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    hashed_password = bcrypt.hashpw(user_create.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    user_in_db = UserInDB(
-        username=user_create.username,
-        email=user_create.email,
-        hashed_password=hashed_password,
-        balance=0.0 # Initial balance
-    )
-    in_memory_users[user_create.username] = user_in_db
-    return User(**user_in_db.model_dump())
-
-@api_router.post("/login", response_model=User)
-async def login_user(user_login: UserLogin):
-    user_in_db = in_memory_users.get(user_login.username)
-    if not user_in_db:
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-    
-    if not bcrypt.checkpw(user_login.password.encode('utf-8'), user_in_db.hashed_password.encode('utf-8')):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-    
-    return User(**user_in_db.model_dump())
-
-@api_router.get("/user/balance/{username}", response_model=User)
-async def get_user_balance(username: str):
-    user_in_db = in_memory_users.get(username)
-    if not user_in_db:
-        raise HTTPException(status_code=404, detail="User not found")
-    return User(**user_in_db.model_dump())
-
-@api_router.post("/user/deposit/{username}", response_model=User)
-async def deposit_funds(username: str, update: BalanceUpdate):
-    user_in_db = in_memory_users.get(username)
-    if not user_in_db:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    user_in_db.balance += update.amount
-    return User(**user_in_db.model_dump())
-
-@api_router.post("/user/withdraw/{username}", response_model=User)
-async def withdraw_funds(username: str, update: BalanceUpdate):
-    user_in_db = in_memory_users.get(username)
-    if not user_in_db:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if user_in_db.balance < update.amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
-    
-    user_in_db.balance -= update.amount
-    return User(**user_in_db.model_dump())
 
 # Include the router in the main app
 app.include_router(api_router)

@@ -3,7 +3,7 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Timer, TrendingUp } from 'lucide-react';
-import { simulateColorRound, getUserBalance, updateUserBalance, addGameHistory, GAME_PAYOUTS } from '../../mock';
+import { simulateColorRound, getUserBalance, addGameHistory, GAME_PAYOUTS } from '../../mock'; // Removed updateUserBalance
 
 const ColorPredictionGame = ({ onBalanceChange }) => {
   const [gameState, setGameState] = useState('betting'); // betting, counting, result
@@ -53,10 +53,9 @@ const ColorPredictionGame = ({ onBalanceChange }) => {
       if (selectedColor) {
         if (selectedColor === roundResult) {
           const payout = betAmount * GAME_PAYOUTS.color[roundResult];
-          const balance = getUserBalance();
-          updateUserBalance(balance + payout);
+          // For now, we update client-side and trigger a full refresh
           setWinAmount(payout);
-          onBalanceChange();
+          onBalanceChange(); // This will fetch the latest balance from backend
 
           // Record win
           addGameHistory({
@@ -97,9 +96,10 @@ const ColorPredictionGame = ({ onBalanceChange }) => {
     }
 
     if (gameState === 'betting') {
-      updateUserBalance(balance - betAmount);
+      // Balance deduction handled by the game logic on client-side
+      setBetAmount(betAmount); // Keep bet amount for history
       setSelectedColor(color);
-      onBalanceChange();
+      onBalanceChange(); // This will trigger a fetch of the true balance from the backend.
     }
   };
 
